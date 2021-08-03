@@ -49,6 +49,7 @@ Country_SSP_Database<- merge(Country_SSP_Database,SSP1_noCOVID,by = c("iso","yea
 Country_SSP_Database<- merge(Country_SSP_Database,SSP2_noCOVID,by = c("iso","year", "sector"),all.x = TRUE)
 Country_SSP_Database<- merge(Country_SSP_Database,SSP5_noCOVID,by = c("iso","year", "sector"),all.x = TRUE)
 measure.values<-c("SSP1_noCOVID","SSP2_noCOVID","SSP5_noCOVID","SSP1","SSP2","SSP5")
+setDT(Country_SSP_Database)
 Country_SSP_Database <- melt(Country_SSP_Database ,  measure.vars = measure.values, variable.name = "scenarios")
 
 #Elasticities
@@ -64,6 +65,7 @@ setnames(SSP5_Elasticitiy_COVID, old = "income_elasticity_pass_lo", new = "IE_SS
 Country_SSP_Database_IE<- merge(SSP1_Elasticitiy_COVID,SSP2_Elasticitiy_COVID, by = c("iso","year"),all.x = TRUE)
 Country_SSP_Database_IE<- merge(Country_SSP_Database_IE,SSP5_Elasticitiy_COVID,by = c("iso","year"),all.x = TRUE)
 measure.values<-c("IE_SSP1","IE_SSP2","IE_SSP5")
+setDT(Country_SSP_Database_IE)
 Country_SSP_Database_IE <- melt(Country_SSP_Database_IE ,  measure.vars = measure.values, variable.name = "scenarios")
 
 #plotting palette
@@ -183,6 +185,7 @@ setDT(GDP_data)
 GDP_data <- melt(GDP_data ,  measure.vars = measure.values, variable.name = "scenarios")
 setnames(POP_data, old = "value", new = "Population")
 setnames(GDP_data, old = "value", new = "GDP")
+setDT(POP_data)
 Country_SSP_Database_regional<-merge(Country_SSP_Database_regional,iso_mapping, by = c("iso"))
 Country_SSP_Database_regional <- Country_SSP_Database_regional %>% group_by(year,sector,iso_region,scenarios)
 Country_SSP_Database_regional = summarise(Country_SSP_Database_regional, regional_demand = sum(value))
@@ -424,6 +427,7 @@ regional_capita_demand_Adj <-  ggplot(Country_SSP_Database_regional_2, aes(x=GDP
   Country_SSP_Database_takeoffs_all <- merge(Country_SSP_Database_takeoffs_all,Country_SSP_Database_takeoffs_dom_int_SSP5[,c(1,3,8,9,10)],  by = c("year","iso_region"), all.x=TRUE)
   cols1 = c("SSP2" ="blue1","SSP1" ="green4","SSP5" ="red")
  Country_SSP_Database_takeoffs_all <- Country_SSP_Database_takeoffs_all[,c(1,2,10,13,16)]
+ setDT(Country_SSP_Database_takeoffs_all)
   Country_SSP_Database_takeoffs_all <- melt(Country_SSP_Database_takeoffs_all,  id.vars = c("year", "iso_region"), variable.name = "scenarios")
   Country_SSP_Database_takeoffs_all_EUR<-Country_SSP_Database_takeoffs_all%>% filter(iso_region == "EUR")
  EUR_takeoffs <- ggplot(Country_SSP_Database_takeoffs_all_EUR, aes(x=year, y=value, col = scenarios))+
@@ -488,6 +492,7 @@ regional_capita_demand_Adj <-  ggplot(Country_SSP_Database_regional_2, aes(x=GDP
   Country_SSP_Database_takeoffs_all <- merge(Country_SSP_Database_takeoffs_all,Country_SSP_Database_takeoffs_dom_int_SSP5[,c(1,3,8,9,10)],  by = c("year","iso_region"), all.x=TRUE)
   cols1 = c("SSP2" ="blue1","SSP1" ="green4","SSP5" ="red")
  Country_SSP_Database_takeoffs_all <- Country_SSP_Database_takeoffs_all[,c(1,2,10,13,16)]
+ setDT(Country_SSP_Database_takeoffs_all)
   Country_SSP_Database_takeoffs_all <- melt(Country_SSP_Database_takeoffs_all,  id.vars = c("year", "iso_region"), variable.name = "scenarios")
   Country_SSP_Database_takeoffs_all<-Country_SSP_Database_takeoffs_all%>% filter(iso_region == "SSA")
  SSA_takeoffs <- ggplot(Country_SSP_Database_takeoffs_all, aes(x=year, y=value, col = scenarios))+
