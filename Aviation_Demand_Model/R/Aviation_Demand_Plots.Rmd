@@ -1,0 +1,716 @@
+---
+title: "Aviation Demand plots"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+classoption: landscape
+---
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+##specify folders
+#please insert here the path to you local folder
+########### IMPORTANT ###################
+local_folder= "ADD/YOUR/LOCAL/PATH/HERE"
+########### IMPORTANT ###################
+setwd(local_folder)
+data_folder = file.path(local_folder,"data_folder")
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(dev = 'pdf')
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+require(ggplot2)
+require(rmndt)
+require(dplyr)
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+#Combine RDS files
+SSP1 <-readRDS(file.path(data_folder,"aviation_demand_SSP1_COVID=TRUE.rds"))
+SSP2 <-readRDS(file.path(data_folder,"aviation_demand_SSP2_COVID=TRUE.rds"))
+SSP5 <-readRDS(file.path(data_folder,"aviation_demand_SSP5_COVID=TRUE.rds"))
+SSP1_noCOVID <-readRDS(file.path(data_folder,"aviation_demand_SSP1_COVID=FALSE.rds"))
+SSP2_noCOVID <-readRDS(file.path(data_folder,"aviation_demand_SSP2_COVID=FALSE.rds"))
+SSP5_noCOVID <-readRDS(file.path(data_folder,"aviation_demand_SSP5_COVID=FALSE.rds"))
+#rename demand
+setnames(SSP1, old = "demand", new = "SSP1")
+setnames(SSP2, old = "demand", new = "SSP2")
+setnames(SSP5, old = "demand", new = "SSP5")
+setnames(SSP1_noCOVID, old = "demand", new = "SSP1_noCOVID")
+setnames(SSP2_noCOVID, old = "demand", new = "SSP2_noCOVID")
+setnames(SSP5_noCOVID, old = "demand", new = "SSP5_noCOVID")
+
+#merge
+Country_SSP_Database<- merge(SSP1,SSP2, by = c("iso","year","sector"),all.x = TRUE)
+Country_SSP_Database<- merge(Country_SSP_Database,SSP5,by = c("iso","year","sector"),all.x = TRUE)
+Country_SSP_Database<- merge(Country_SSP_Database,SSP1_noCOVID,by = c("iso","year","sector"),all.x = TRUE)
+Country_SSP_Database<- merge(Country_SSP_Database,SSP2_noCOVID,by = c("iso","year", "sector"),all.x = TRUE)
+Country_SSP_Database<- merge(Country_SSP_Database,SSP5_noCOVID,by = c("iso","year", "sector"),all.x = TRUE)
+measure.values<-c("SSP1_noCOVID","SSP2_noCOVID","SSP5_noCOVID","SSP1","SSP2","SSP5")
+Country_SSP_Database <- melt(Country_SSP_Database ,  measure.vars = measure.values, variable.name = "scenarios")
+
+#Elasticities
+SSP1_Elasticitiy_COVID <-readRDS(file.path(data_folder,"elasticities_SSP1_COVID=TRUE.rds"))
+SSP2_Elasticitiy_COVID <-readRDS(file.path(data_folder,"elasticities_SSP2_COVID=TRUE.rds"))
+SSP5_Elasticitiy_COVID <-readRDS(file.path(data_folder,"elasticities_SSP5_COVID=TRUE.rds"))
+#rename demand
+setnames(SSP1_Elasticitiy_COVID, old = "income_elasticity_pass_lo", new = "IE_SSP1")
+setnames(SSP2_Elasticitiy_COVID, old = "income_elasticity_pass_lo", new = "IE_SSP2")
+setnames(SSP5_Elasticitiy_COVID, old = "income_elasticity_pass_lo", new = "IE_SSP5")
+
+#merge
+Country_SSP_Database_IE<- merge(SSP1_Elasticitiy_COVID,SSP2_Elasticitiy_COVID, by = c("iso","year"),all.x = TRUE)
+Country_SSP_Database_IE<- merge(Country_SSP_Database_IE,SSP5_Elasticitiy_COVID,by = c("iso","year"),all.x = TRUE)
+measure.values<-c("IE_SSP1","IE_SSP2","IE_SSP5")
+Country_SSP_Database_IE <- melt(Country_SSP_Database_IE ,  measure.vars = measure.values, variable.name = "scenarios")
+
+#plotting palette
+legend_title_1 <- "EDGE-T scenarios"
+legend_title_2 <- "Reference scenarios"
+legend_title_3<- "EDGE-T scenarios & Reference scenarios"
+cols = c("reference AIM, SSP5" = "black", "reference AIM, SSP2" = "black", "reference AIM, SSP1" = "black","SSP2" ="blue1",
+  "SSP1" ="green4","SSP5" ="red","SSP2_noCOVID" ="steelblue4","SSP1_noCOVID" ="darkolivegreen","SSP5_noCOVID" ="darksalmon")
+cols1 = c("SSP2" ="blue1","SSP1" ="green4","SSP5" ="red")
+cols2 = c("SSP2" ="blue1","SSP1" ="green4","SSP5" ="red","SSP2_noCOVID" ="steelblue4","SSP1_noCOVID" ="darkolivegreen","SSP5_noCOVID" ="darksalmon")
+cols3 = c("SSP2" ="blue1","SSP1" ="green4","SSP5" ="red","IATA - reference" = "black")
+```
+
+
+\newpage
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+Country_SSP_Database_global <- Country_SSP_Database
+Country_SSP_Database_global <- Country_SSP_Database_global %>% group_by(year,sector,scenarios)
+Country_SSP_Database_global = summarise(Country_SSP_Database_global, global_demand = sum(value))
+References = fread(file.path(data_folder,"References.csv"), sep=";", header = T)
+References <- subset(References, References$year <=2100 & References$year >=2020)
+measure.values<-c("reference_demand_goessling et.al","reference_demand_JADC","reference AIM, SSP2","reference AIM, SSP1","reference AIM, SSP5")
+References <- melt(References ,  measure.vars = measure.values, variable.name = 'scenarios')
+setnames(References, old = "value", new = "global_demand")
+Country_SSP_Database_global <- rbind(Country_SSP_Database_global,References)
+  #prepare plot
+Country_SSP_Database_global$sector <- ifelse(Country_SSP_Database_global$sector == "trn_aviation_intl","Total Aviation Demand", Country_SSP_Database_global$sector)
+Country_SSP_Database_global<- Country_SSP_Database_global %>% filter(sector == "Total Aviation Demand")
+Country_SSP_Database_global<- Country_SSP_Database_global %>% filter(scenarios == "SSP1"| scenarios == "SSP2"| scenarios ==  "SSP5"| scenarios == "reference AIM, SSP1"| scenarios ==  "reference AIM, SSP2"|scenarios ==  "reference AIM, SSP5"|scenarios == "SSP1_noCOVID"| scenarios == "SSP2_noCOVID"| scenarios ==  "SSP5_noCOVID")
+#group by covid
+  cols = c("reference AIM, SSP5" = "black", "reference AIM, SSP2" = "black", "reference AIM, SSP1" = "black","SSP2" ="blue1",
+  "SSP1" ="green4","SSP5" ="red","SSP2_noCOVID" ="steelblue4","SSP1_noCOVID" ="darkolivegreen","SSP5_noCOVID" ="darksalmon")
+linetype_ref = c("reference AIM, SSP1" = "dashed", "reference AIM, SSP2" ="dotted","reference AIM, SSP5" = "dotdash")
+setDT(Country_SSP_Database_global)
+Country_SSP_Database_global[, His := ifelse(year < 2020 , TRUE, FALSE)]
+Country_SSP_Database_global[, Ref := ifelse(scenarios ==  "reference AIM, SSP1"|scenarios ==  "reference AIM, SSP2"|scenarios ==  "reference AIM, SSP5" , TRUE, FALSE)]
+Country_SSP_Database_global$scenarios <- factor(Country_SSP_Database_global$scenarios, levels = c("reference AIM, SSP1", "reference AIM, SSP2", "reference AIM, SSP5","SSP1_noCOVID","SSP1","SSP2_noCOVID","SSP2","SSP5_noCOVID","SSP5"))
+total_aviation <- ggplot()+
+  geom_line(data = filter(Country_SSP_Database_global, Ref), aes(x=year,y=global_demand,group=scenarios, linetype=scenarios))+
+  geom_line(data = filter(Country_SSP_Database_global, !Ref), aes(x=year,y=global_demand,group=scenarios,colour=scenarios))+
+  geom_point(data = filter(Country_SSP_Database_global, His), alpha = 0.2, size=1,aes(x=year, y=global_demand,group=scenarios))+ 
+  scale_colour_manual(legend_title_1,values =cols )+
+  scale_linetype_manual(legend_title_2,values =linetype_ref )+
+  labs(y = "[trillion RPK]", x="", title = "Total Aviation Demand")+
+  theme_bw()
+  print(total_aviation)
+```
+
+\newpage
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+#REGIONAL DEMAND
+Country_SSP_Database_regional <- Country_SSP_Database
+iso_mapping<-fread(file.path(data_folder,"regionmappingH12.csv"), sep=";", header = T)
+Country_SSP_Database_regional<-merge(Country_SSP_Database_regional,iso_mapping, by = c("iso"))
+Country_SSP_Database_regional <- Country_SSP_Database_regional %>% group_by(year,sector,iso_region,scenarios)
+Country_SSP_Database_regional = summarise(Country_SSP_Database_regional, regional_demand = sum(value))
+#prepare plot
+Country_SSP_Database_regional$sector <- ifelse(Country_SSP_Database_regional$sector == "trn_aviation_intl","Total Aviation Demand", Country_SSP_Database_regional$sector)
+Country_SSP_Database_regional<- Country_SSP_Database_regional %>% filter(sector == "Total Aviation Demand")
+Country_SSP_Database_regional<- Country_SSP_Database_regional %>% filter(scenarios == "SSP1" | scenarios == "SSP2" |scenarios =="SSP5")
+  regional_demand <-  ggplot(Country_SSP_Database_regional, aes(x=year, y=regional_demand, col =iso_region))+
+geom_line()+
+    facet_wrap(~scenarios)+
+    labs(y = "billion RPK", x="", title = "Total Aviation Demand")
+  print(regional_demand)
+```
+\newpage
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+#REGIONAL DEMAND
+Country_SSP_Database_regional <- Country_SSP_Database
+GDP_data<-fread(file.path(data_folder,"GDP_data.csv"), sep=";", header = T)
+POP_data<-fread(file.path(data_folder,"Pop_data.csv"), sep=";", header = T)
+iso_mapping<-fread(file.path(data_folder,"regionmappingH12.csv"), sep=";", header = T)
+GDP_data <- subset(GDP_data, GDP_data$year <=2100 & GDP_data$year >=2000)
+GDP_data[, c(3) := NULL]
+measure.values<-c("SSP1_noCOVID","SSP2_noCOVID","SSP5_noCOVID")
+#interpolate
+GDP_data=melt( GDP_data,id.vars = c("iso","year"))
+## interpolate
+GDP_data=approx_dt(dt =  GDP_data, ## database to interpolate
+                         xdata = seq(2000,2100,1), ## time steps on which to interpolate
+                         ycol = "value", ## column containing the data to interpolate
+                         xcol="year", ## x-axis of the interpolation, i.e. the years that you indeed have available
+                         idxcols=c("iso","variable"), ## equivalent of "group_by" in dplyr and "by=.(....)" in data.table
+                         extrapolate = T) ## extrapolate? i.e. min(xdata)<min(unique(dat$year))|max(xdata)>max(unique(dat$year))
+GDP_data=dcast( GDP_data,iso+year~variable,value.var="value")
+
+POP_data <- subset(POP_data, POP_data$year <=2100 & POP_data$year >=2000)
+POP_data[, c(3) := NULL]
+measure.values<-c("SSP1_noCOVID","SSP2_noCOVID","SSP5_noCOVID")
+#interpolate
+POP_data=melt( POP_data,id.vars = c("iso","year"))
+## interpolate
+POP_data=approx_dt(dt =  POP_data, ## database to interpolate
+                         xdata = seq(2000,2100,1), ## time steps on which to interpolate
+                         ycol = "value", ## column containing the data to interpolate
+                         xcol="year", ## x-axis of the interpolation, i.e. the years that you indeed have available
+                         idxcols=c("iso","variable"), ## equivalent of "group_by" in dplyr and "by=.(....)" in data.table
+                         extrapolate = T) ## extrapolate? i.e. min(xdata)<min(unique(dat$year))|max(xdata)>max(unique(dat$year))
+POP_data=dcast( POP_data,iso+year~variable,value.var="value")
+POP_data<-merge(POP_data,iso_mapping, by = c("iso"))
+POP_data[, c(1) := NULL]
+POP_data[, c(8) := NULL]
+POP_data <-POP_data %>% group_by(iso_region,year)
+POP_data= summarise_all(.tbl = POP_data,.funs = sum)
+
+GDP_data<-merge(GDP_data,iso_mapping, by = c("iso"))
+GDP_data[, c(1) := NULL]
+GDP_data[, c(8) := NULL]
+GDP_data <-GDP_data %>% group_by(iso_region,year)
+GDP_data= summarise_all(.tbl = GDP_data,.funs = sum)
+
+measure.values<-c("SSP1_noCOVID","SSP2_noCOVID","SSP5_noCOVID","SSP1","SSP2","SSP5")
+POP_data <- melt(POP_data ,  measure.vars = measure.values, variable.name = "scenarios")
+GDP_data <- melt(GDP_data ,  measure.vars = measure.values, variable.name = "scenarios")
+setnames(POP_data, old = "value", new = "Population")
+setnames(GDP_data, old = "value", new = "GDP")
+Country_SSP_Database_regional<-merge(Country_SSP_Database_regional,iso_mapping, by = c("iso"))
+Country_SSP_Database_regional <- Country_SSP_Database_regional %>% group_by(year,sector,iso_region,scenarios)
+Country_SSP_Database_regional = summarise(Country_SSP_Database_regional, regional_demand = sum(value))
+Country_SSP_Database_regional<-merge(POP_data,Country_SSP_Database_regional, by = c("iso_region","year","scenarios"))
+Country_SSP_Database_regional<-merge(GDP_data,Country_SSP_Database_regional, by = c("iso_region","year","scenarios"))
+Country_SSP_Database_regional <- transform(Country_SSP_Database_regional, GDP_CAP = GDP / Population)
+Country_SSP_Database_regional <- transform(Country_SSP_Database_regional, RPK_CAP = regional_demand*1000000  / Population)
+
+#prepare plot
+Country_SSP_Database_regional$sector <- ifelse(Country_SSP_Database_regional$sector == "trn_aviation_intl","Total Aviation Demand", Country_SSP_Database_regional$sector)
+Country_SSP_Database_regional<- Country_SSP_Database_regional %>% filter(sector == "Total Aviation Demand")
+Country_SSP_Database_regional_1<- Country_SSP_Database_regional %>% filter(scenarios == "SSP1" | scenarios == "SSP2" |scenarios =="SSP5")
+regional_capita_demand <-  ggplot(Country_SSP_Database_regional_1, aes(x=year, y=RPK_CAP, col =iso_region))+
+    geom_line()+
+    xlab("years")+
+    theme(panel.background = element_rect(fill = NA),
+    panel.grid.major = element_line(colour = "grey50"),
+    panel.ontop = TRUE)+
+    ylab("region_demand per capita")+
+    facet_wrap(~scenarios)+
+    ggtitle("Total per capita Aviation Demand")
+  print(regional_capita_demand)
+```
+\newpage
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+Country_SSP_Database_regional_2<- Country_SSP_Database_regional %>% filter(scenarios == "SSP1_noCOVID" | scenarios == "SSP2_noCOVID" |scenarios =="SSP5_noCOVID")
+regional_capita_demand <-  ggplot(Country_SSP_Database_regional_2, aes(x=year, y=RPK_CAP, col =iso_region))+
+    geom_line()+
+    xlab("years")+
+    theme(panel.background = element_rect(fill = NA),
+    panel.grid.major = element_line(colour = "grey50"),
+    panel.ontop = TRUE)+
+    ylab("region_demand per capita")+
+    facet_wrap(~scenarios)+
+    ggtitle("Total per capita Aviation Demand non COVID")
+  print(regional_capita_demand)
+```
+\newpage
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+#REGIONAL DEMAND
+Country_SSP_Database_regional_GDP_cap_2 <- Country_SSP_Database_regional_2
+regional_capita_demand_Adj <-  ggplot(Country_SSP_Database_regional_2, aes(x=GDP_CAP, y=RPK_CAP, col =iso_region))+
+    geom_line()+
+    xlab("GDP per capita in USD")+
+    ylab("region_demand in RPK per capita")+
+    facet_wrap(~scenarios)+
+    theme(panel.background = element_rect(fill = NA),
+    panel.grid.major = element_line(colour = "grey50"),
+    panel.ontop = TRUE)+
+    ggtitle("RPK per capita per GDP per capita non COVID")
+  print(regional_capita_demand_Adj)
+```
+\newpage
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+#REGIONAL DEMAND
+Country_SSP_Database_regional_GDP_cap <- Country_SSP_Database_regional_1
+regional_capita_demand_Adj <-  ggplot(Country_SSP_Database_regional_1, aes(x=GDP_CAP, y=RPK_CAP, col =iso_region))+
+    geom_line()+
+    xlab("GDP per capita in USD")+
+    ylab("region_demand in RPK per capita")+
+    facet_wrap(~scenarios)+
+    theme(panel.background = element_rect(fill = NA),
+    panel.grid.major = element_line(colour = "grey50"),
+    panel.ontop = TRUE)+
+    ggtitle("RPK per capita per GDP per capita COVID")
+  print(regional_capita_demand_Adj)
+```
+\newpage
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+#REGIONAL DEMAND
+Country_SSP_Database_regional <- Country_SSP_Database
+GDP_data<-fread(file.path(data_folder,"GDP_data.csv"), sep=";", header = T)
+POP_data<-fread(file.path(data_folder,"Pop_data.csv"), sep=";", header = T)
+iso_mapping<-fread(file.path(data_folder,"regionmappingH12.csv"), sep=";", header = T)
+GDP_data <- subset(GDP_data, GDP_data$year <=2100 & GDP_data$year >=2000)
+GDP_data[, c(3) := NULL]
+measure.values<-c("SSP1_noCOVID","SSP2_noCOVID","SSP5_noCOVID")
+#interpolate
+GDP_data=melt( GDP_data,id.vars = c("iso","year"))
+## interpolate
+GDP_data=approx_dt(dt =  GDP_data, ## database to interpolate
+                         xdata = seq(2000,2100,1), ## time steps on which to interpolate
+                         ycol = "value", ## column containing the data to interpolate
+                         xcol="year", ## x-axis of the interpolation, i.e. the years that you indeed have available
+                         idxcols=c("iso","variable"), ## equivalent of "group_by" in dplyr and "by=.(....)" in data.table
+                         extrapolate = T) ## extrapolate? i.e. min(xdata)<min(unique(dat$year))|max(xdata)>max(unique(dat$year))
+GDP_data=dcast( GDP_data,iso+year~variable,value.var="value")
+
+POP_data <- subset(POP_data, POP_data$year <=2100 & POP_data$year >=2000)
+POP_data[, c(3) := NULL]
+measure.values<-c("SSP1_noCOVID","SSP2_noCOVID","SSP5_noCOVID")
+#interpolate
+POP_data=melt( POP_data,id.vars = c("iso","year"))
+## interpolate
+POP_data=approx_dt(dt =  POP_data, ## database to interpolate
+                         xdata = seq(2000,2100,1), ## time steps on which to interpolate
+                         ycol = "value", ## column containing the data to interpolate
+                         xcol="year", ## x-axis of the interpolation, i.e. the years that you indeed have available
+                         idxcols=c("iso","variable"), ## equivalent of "group_by" in dplyr and "by=.(....)" in data.table
+                         extrapolate = T) ## extrapolate? i.e. min(xdata)<min(unique(dat$year))|max(xdata)>max(unique(dat$year))
+POP_data=dcast( POP_data,iso+year~variable,value.var="value")
+POP_data<-merge(POP_data,iso_mapping, by = c("iso"))
+POP_data[, c(1) := NULL]
+POP_data[, c(8) := NULL]
+POP_data <-POP_data %>% group_by(iso_region,year)
+POP_data= summarise_all(.tbl = POP_data,.funs = sum)
+
+GDP_data<-merge(GDP_data,iso_mapping, by = c("iso"))
+GDP_data[, c(1) := NULL]
+GDP_data[, c(8) := NULL]
+GDP_data <-GDP_data %>% group_by(iso_region,year)
+GDP_data= summarise_all(.tbl = GDP_data,.funs = sum)
+
+measure.values<-c("SSP1_noCOVID","SSP2_noCOVID","SSP5_noCOVID","SSP1","SSP2","SSP5")
+POP_data <- melt(POP_data ,  measure.vars = measure.values, variable.name = "scenarios")
+GDP_data <- melt(GDP_data ,  measure.vars = measure.values, variable.name = "scenarios")
+setnames(POP_data, old = "value", new = "Population")
+setnames(GDP_data, old = "value", new = "GDP")
+Country_SSP_Database_regional<-merge(Country_SSP_Database_regional,iso_mapping, by = c("iso"))
+Country_SSP_Database_regional <- Country_SSP_Database_regional %>% group_by(year,sector,iso_region,scenarios)
+Country_SSP_Database_regional = summarise(Country_SSP_Database_regional, regional_demand = sum(value))
+Country_SSP_Database_regional<-merge(POP_data,Country_SSP_Database_regional, by = c("iso_region","year","scenarios"))
+Country_SSP_Database_regional<-merge(GDP_data,Country_SSP_Database_regional, by = c("iso_region","year","scenarios"))
+Country_SSP_Database_regional <- transform(Country_SSP_Database_regional, GDP_CAP = GDP / Population)
+Country_SSP_Database_regional <- transform(Country_SSP_Database_regional, RPK_CAP = regional_demand*1000000  / Population)
+
+#prepare plot
+Country_SSP_Database_regional_1<- Country_SSP_Database_regional %>% filter(sector == "trn_aviation_intl_L")
+Country_SSP_Database_regional_2<- Country_SSP_Database_regional %>% filter(sector == "trn_aviation_intl_B")
+Country_SSP_Database_regional<-merge(Country_SSP_Database_regional_1,Country_SSP_Database_regional_2[,c("regional_demand","year", "scenarios", "iso_region")], by = c("year","scenarios", "iso_region"))
+Country_SSP_Database_regional <- transform(Country_SSP_Database_regional, international_demand = regional_demand.x +regional_demand.y)
+Country_SSP_Database_regional <- transform(Country_SSP_Database_regional, RPK_CAP_int = international_demand*1000000  / Population)
+Country_SSP_Database_regional_1<- Country_SSP_Database_regional %>% filter(scenarios == "SSP1" | scenarios == "SSP2" |scenarios =="SSP5")
+regional_capita_demand <-  ggplot(Country_SSP_Database_regional_1, aes(x=year, y=RPK_CAP_int, col =iso_region))+
+    geom_line()+
+    xlab("years")+
+    theme(panel.background = element_rect(fill = NA),
+    panel.grid.major = element_line(colour = "grey50"),
+    panel.ontop = TRUE)+
+    ylab("region_demand per capita")+
+    facet_wrap(~scenarios)+
+    ggtitle("International per capita Aviation Demand COVID")
+  print(regional_capita_demand)
+```
+\newpage
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+#REGIONAL DEMAND
+regional_capita_demand_Adj <-  ggplot(Country_SSP_Database_regional_1, aes(x=GDP_CAP, y=RPK_CAP_int, col =iso_region))+
+    geom_line()+
+    xlab("GDP per capita in USD")+
+    ylab("region_demand in RPK per capita")+
+    facet_wrap(~scenarios)+
+    theme(panel.background = element_rect(fill = NA),
+    panel.grid.major = element_line(colour = "grey50"),
+    panel.ontop = TRUE)+
+    ggtitle("International RPK per capita per GDP per capita  COVID")
+  print(regional_capita_demand_Adj)
+```
+\newpage
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+Country_SSP_Database_regional_2<- Country_SSP_Database_regional %>% filter(scenarios == "SSP1_noCOVID" | scenarios == "SSP2_noCOVID" |scenarios =="SSP5_noCOVID")
+regional_capita_demand <-  ggplot(Country_SSP_Database_regional_2, aes(x=year, y=RPK_CAP_int, col =iso_region))+
+    geom_line()+
+    xlab("years")+
+    theme(panel.background = element_rect(fill = NA),
+    panel.grid.major = element_line(colour = "grey50"),
+    panel.ontop = TRUE)+
+    ylab("region_demand per capita")+
+    facet_wrap(~scenarios)+
+    ggtitle("International per capita Aviation Demand non COVID")
+  print(regional_capita_demand)
+```
+\newpage
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+#REGIONAL DEMAND
+Country_SSP_Database_regional_GDP_cap_2 <- Country_SSP_Database_regional_2
+regional_capita_demand_Adj <-  ggplot(Country_SSP_Database_regional_2, aes(x=GDP_CAP, y=RPK_CAP_int, col =iso_region))+
+    geom_line()+
+    xlab("GDP per capita in USD")+
+    ylab("region_demand in RPK per capita")+
+    facet_wrap(~scenarios)+
+    theme(panel.background = element_rect(fill = NA),
+    panel.grid.major = element_line(colour = "grey50"),
+    panel.ontop = TRUE)+
+    ggtitle("International RPK per capita per GDP per capita no COVID")
+  print(regional_capita_demand_Adj)
+```
+
+\newpage
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+  
+  #TAKEOFFS
+  # all data fromo year 2019
+  #average domestic flight length: 906 miles = 1458 km Source: https://www.transtats.bts.gov/Data_Elements.aspx?Data=1
+  #average international flight length: 3388 Miles = 5452 km , Source: https://www.transtats.bts.gov/Data_Elements.aspx?Data=1
+  #average domestic passenger per flight = 94 Source: https://www.transtats.bts.gov/Data_Elements.aspx?Data=1
+  #average international passenger per flight = 148 Source: https://www.transtats.bts.gov/Data_Elements.aspx?Data=1
+  domestic_takeoff_constant <-  (1458 *94)/ 1000000000000
+  international_takeoff_constant <-  (5452 *148)/ 1000000000000
+  #TOTAL
+  Country_SSP_Database_takeoffs <- Country_SSP_Database
+  Country_SSP_Database_takeoffs<-merge(Country_SSP_Database_takeoffs,iso_mapping, by = c("iso"))
+  Country_SSP_Database_takeoffs <- subset(Country_SSP_Database_takeoffs, Country_SSP_Database_takeoffs$year <=2100 & Country_SSP_Database_takeoffs$year >=2000)
+  Country_SSP_Database_takeoffs <- Country_SSP_Database_takeoffs[,c("year","iso_region","sector","scenarios","value")]
+  Country_SSP_Database_takeoffs<- Country_SSP_Database_takeoffs %>% filter(scenarios == "SSP1" | scenarios == "SSP2" |scenarios =="SSP5")
+  Country_SSP_Database_takeoffs_domestic<- Country_SSP_Database_takeoffs %>% filter(sector == "trn_aviation_intl_d_B" | sector == "trn_aviation_intl_d_L")
+  Country_SSP_Database_takeoffs_domestic <- Country_SSP_Database_takeoffs_domestic %>% group_by(scenarios, year,iso_region)
+  Country_SSP_Database_takeoffs_domestic = summarise(Country_SSP_Database_takeoffs_domestic, Domestic_demand = sum(value))
+  Country_SSP_Database_takeoffs_international<- Country_SSP_Database_takeoffs %>% filter(sector == "trn_aviation_intl_B" | sector == "trn_aviation_intl_d_B")
+  Country_SSP_Database_takeoffs_international <- Country_SSP_Database_takeoffs_international %>% group_by(scenarios, year,iso_region)
+  Country_SSP_Database_takeoffs_international = summarise(Country_SSP_Database_takeoffs_international, International_demand = sum(value))
+  Country_SSP_Database_takeoffs_dom_int <- merge(Country_SSP_Database_takeoffs_international,Country_SSP_Database_takeoffs_domestic,  by = c("year", "scenarios","iso_region"), all.x=TRUE)
+  #SSP1
+  Country_SSP_Database_takeoffs_dom_int_SSP1<- Country_SSP_Database_takeoffs_dom_int %>% filter(scenarios == "SSP1")
+  Country_SSP_Database_takeoffs_dom_int_SSP1 <- transform(Country_SSP_Database_takeoffs_dom_int_SSP1, Total_demand = Domestic_demand +  International_demand)
+  Country_SSP_Database_takeoffs_dom_int_SSP1 <- transform(Country_SSP_Database_takeoffs_dom_int_SSP1, International_Share = International_demand / Total_demand)
+  Country_SSP_Database_takeoffs_dom_int_SSP1 <- transform(Country_SSP_Database_takeoffs_dom_int_SSP1, Takeoffs_International_SSP1 = International_demand / international_takeoff_constant)
+  Country_SSP_Database_takeoffs_dom_int_SSP1 <- transform(Country_SSP_Database_takeoffs_dom_int_SSP1, Takeoffs_Domestic_SSP1 = Domestic_demand / domestic_takeoff_constant)
+  Country_SSP_Database_takeoffs_dom_int_SSP1 <- transform(Country_SSP_Database_takeoffs_dom_int_SSP1, SSP1 = Takeoffs_Domestic_SSP1 + Takeoffs_International_SSP1)
+  #SSP2
+  Country_SSP_Database_takeoffs_dom_int_SSP2<- Country_SSP_Database_takeoffs_dom_int %>% filter(scenarios == "SSP2")
+  Country_SSP_Database_takeoffs_dom_int_SSP2 <- transform(Country_SSP_Database_takeoffs_dom_int_SSP2, Total_demand = Domestic_demand +  International_demand)
+  Country_SSP_Database_takeoffs_dom_int_SSP2 <- transform(Country_SSP_Database_takeoffs_dom_int_SSP2, International_Share = International_demand / Total_demand)
+  Country_SSP_Database_takeoffs_dom_int_SSP2 <- transform(Country_SSP_Database_takeoffs_dom_int_SSP2, Takeoffs_International_SSP2 = International_demand / international_takeoff_constant)
+  Country_SSP_Database_takeoffs_dom_int_SSP2 <- transform(Country_SSP_Database_takeoffs_dom_int_SSP2, Takeoffs_Domestic_SSP2 = Domestic_demand / domestic_takeoff_constant)
+  Country_SSP_Database_takeoffs_dom_int_SSP2 <- transform(Country_SSP_Database_takeoffs_dom_int_SSP2, SSP2 = Takeoffs_Domestic_SSP2 + Takeoffs_International_SSP2)
+  Country_SSP_Database_takeoffs_all <- merge(Country_SSP_Database_takeoffs_dom_int_SSP1,Country_SSP_Database_takeoffs_dom_int_SSP2[,c(1,3,8,9,10)],  by = c("year","iso_region"), all.x=TRUE)
+    #SSP5
+  Country_SSP_Database_takeoffs_dom_int_SSP5<- Country_SSP_Database_takeoffs_dom_int %>% filter(scenarios == "SSP5")
+  Country_SSP_Database_takeoffs_dom_int_SSP5 <- transform(Country_SSP_Database_takeoffs_dom_int_SSP5, Total_demand = Domestic_demand +  International_demand)
+  Country_SSP_Database_takeoffs_dom_int_SSP5 <- transform(Country_SSP_Database_takeoffs_dom_int_SSP5, International_Share = International_demand / Total_demand)
+  Country_SSP_Database_takeoffs_dom_int_SSP5 <- transform(Country_SSP_Database_takeoffs_dom_int_SSP5, Takeoffs_International_SSP5 = International_demand / international_takeoff_constant)
+  Country_SSP_Database_takeoffs_dom_int_SSP5 <- transform(Country_SSP_Database_takeoffs_dom_int_SSP5, Takeoffs_Domestic_SSP5 = Domestic_demand / domestic_takeoff_constant)
+  Country_SSP_Database_takeoffs_dom_int_SSP5 <- transform(Country_SSP_Database_takeoffs_dom_int_SSP5, SSP5 = Takeoffs_Domestic_SSP5 + Takeoffs_International_SSP5)
+  Country_SSP_Database_takeoffs_all <- merge(Country_SSP_Database_takeoffs_all,Country_SSP_Database_takeoffs_dom_int_SSP5[,c(1,3,8,9,10)],  by = c("year","iso_region"), all.x=TRUE)
+  cols1 = c("SSP2" ="blue1","SSP1" ="green4","SSP5" ="red")
+ Country_SSP_Database_takeoffs_all <- Country_SSP_Database_takeoffs_all[,c(1,2,10,13,16)]
+  Country_SSP_Database_takeoffs_all <- melt(Country_SSP_Database_takeoffs_all,  id.vars = c("year", "iso_region"), variable.name = "scenarios")
+  Country_SSP_Database_takeoffs_all_EUR<-Country_SSP_Database_takeoffs_all%>% filter(iso_region == "EUR")
+ EUR_takeoffs <- ggplot(Country_SSP_Database_takeoffs_all_EUR, aes(x=year, y=value, col = scenarios))+
+    geom_line(aes(colour=scenarios))+
+    ggtitle("Total Take-Offs/Landings - Europe")+
+     xlab("")+
+    ylab("Total Take-Offs/Landings")+
+    scale_colour_manual(legend_title_1,values =cols1 )+
+    facet_wrap(~iso_region)+
+    theme_bw()+
+   theme(panel.spacing.x = unit(12, "mm"))
+  print(EUR_takeoffs)
+
+```
+
+\newpage
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+  
+  #TAKEOFFS
+  # all data fromo year 2019
+  #average domestic flight length: 906 miles = 1458 km Source: https://www.transtats.bts.gov/Data_Elements.aspx?Data=1
+  #average international flight length: 3388 Miles = 5452 km , Source: https://www.transtats.bts.gov/Data_Elements.aspx?Data=1
+  #average domestic passenger per flight = 94 Source: https://www.transtats.bts.gov/Data_Elements.aspx?Data=1
+  #average international passenger per flight = 148 Source: https://www.transtats.bts.gov/Data_Elements.aspx?Data=1
+  domestic_takeoff_constant <-  (1458 *94)/ 1000000000000
+  international_takeoff_constant <-  (5452 *148)/ 1000000000000
+  #TOTAL
+  Country_SSP_Database_takeoffs <- Country_SSP_Database
+  Country_SSP_Database_takeoffs<-merge(Country_SSP_Database_takeoffs,iso_mapping, by = c("iso"))
+  Country_SSP_Database_takeoffs <- subset(Country_SSP_Database_takeoffs, Country_SSP_Database_takeoffs$year <=2100 & Country_SSP_Database_takeoffs$year >=2000)
+  Country_SSP_Database_takeoffs <- Country_SSP_Database_takeoffs[,c("year","iso_region","sector","scenarios","value")]
+  Country_SSP_Database_takeoffs<- Country_SSP_Database_takeoffs %>% filter(scenarios == "SSP1" | scenarios == "SSP2" |scenarios =="SSP5")
+  Country_SSP_Database_takeoffs_domestic<- Country_SSP_Database_takeoffs %>% filter(sector == "trn_aviation_intl_d_B" | sector == "trn_aviation_intl_d_L")
+  Country_SSP_Database_takeoffs_domestic <- Country_SSP_Database_takeoffs_domestic %>% group_by(scenarios, year,iso_region)
+  Country_SSP_Database_takeoffs_domestic = summarise(Country_SSP_Database_takeoffs_domestic, Domestic_demand = sum(value))
+  Country_SSP_Database_takeoffs_international<- Country_SSP_Database_takeoffs %>% filter(sector == "trn_aviation_intl_B" | sector == "trn_aviation_intl_d_B")
+  Country_SSP_Database_takeoffs_international <- Country_SSP_Database_takeoffs_international %>% group_by(scenarios, year,iso_region)
+  Country_SSP_Database_takeoffs_international = summarise(Country_SSP_Database_takeoffs_international, International_demand = sum(value))
+  Country_SSP_Database_takeoffs_dom_int <- merge(Country_SSP_Database_takeoffs_international,Country_SSP_Database_takeoffs_domestic,  by = c("year", "scenarios","iso_region"), all.x=TRUE)
+  #SSP1
+  Country_SSP_Database_takeoffs_dom_int_SSP1<- Country_SSP_Database_takeoffs_dom_int %>% filter(scenarios == "SSP1")
+  Country_SSP_Database_takeoffs_dom_int_SSP1 <- transform(Country_SSP_Database_takeoffs_dom_int_SSP1, Total_demand = Domestic_demand +  International_demand)
+  Country_SSP_Database_takeoffs_dom_int_SSP1 <- transform(Country_SSP_Database_takeoffs_dom_int_SSP1, International_Share = International_demand / Total_demand)
+  Country_SSP_Database_takeoffs_dom_int_SSP1 <- transform(Country_SSP_Database_takeoffs_dom_int_SSP1, Takeoffs_International_SSP1 = International_demand / international_takeoff_constant)
+  Country_SSP_Database_takeoffs_dom_int_SSP1 <- transform(Country_SSP_Database_takeoffs_dom_int_SSP1, Takeoffs_Domestic_SSP1 = Domestic_demand / domestic_takeoff_constant)
+  Country_SSP_Database_takeoffs_dom_int_SSP1 <- transform(Country_SSP_Database_takeoffs_dom_int_SSP1, SSP1 = Takeoffs_Domestic_SSP1 + Takeoffs_International_SSP1)
+  #SSP2
+  Country_SSP_Database_takeoffs_dom_int_SSP2<- Country_SSP_Database_takeoffs_dom_int %>% filter(scenarios == "SSP2")
+  Country_SSP_Database_takeoffs_dom_int_SSP2 <- transform(Country_SSP_Database_takeoffs_dom_int_SSP2, Total_demand = Domestic_demand +  International_demand)
+  Country_SSP_Database_takeoffs_dom_int_SSP2 <- transform(Country_SSP_Database_takeoffs_dom_int_SSP2, International_Share = International_demand / Total_demand)
+  Country_SSP_Database_takeoffs_dom_int_SSP2 <- transform(Country_SSP_Database_takeoffs_dom_int_SSP2, Takeoffs_International_SSP2 = International_demand / international_takeoff_constant)
+  Country_SSP_Database_takeoffs_dom_int_SSP2 <- transform(Country_SSP_Database_takeoffs_dom_int_SSP2, Takeoffs_Domestic_SSP2 = Domestic_demand / domestic_takeoff_constant)
+  Country_SSP_Database_takeoffs_dom_int_SSP2 <- transform(Country_SSP_Database_takeoffs_dom_int_SSP2, SSP2 = Takeoffs_Domestic_SSP2 + Takeoffs_International_SSP2)
+  Country_SSP_Database_takeoffs_all <- merge(Country_SSP_Database_takeoffs_dom_int_SSP1,Country_SSP_Database_takeoffs_dom_int_SSP2[,c(1,3,8,9,10)],  by = c("year","iso_region"), all.x=TRUE)
+    #SSP5
+  Country_SSP_Database_takeoffs_dom_int_SSP5<- Country_SSP_Database_takeoffs_dom_int %>% filter(scenarios == "SSP5")
+  Country_SSP_Database_takeoffs_dom_int_SSP5 <- transform(Country_SSP_Database_takeoffs_dom_int_SSP5, Total_demand = Domestic_demand +  International_demand)
+  Country_SSP_Database_takeoffs_dom_int_SSP5 <- transform(Country_SSP_Database_takeoffs_dom_int_SSP5, International_Share = International_demand / Total_demand)
+  Country_SSP_Database_takeoffs_dom_int_SSP5 <- transform(Country_SSP_Database_takeoffs_dom_int_SSP5, Takeoffs_International_SSP5 = International_demand / international_takeoff_constant)
+  Country_SSP_Database_takeoffs_dom_int_SSP5 <- transform(Country_SSP_Database_takeoffs_dom_int_SSP5, Takeoffs_Domestic_SSP5 = Domestic_demand / domestic_takeoff_constant)
+  Country_SSP_Database_takeoffs_dom_int_SSP5 <- transform(Country_SSP_Database_takeoffs_dom_int_SSP5, SSP5 = Takeoffs_Domestic_SSP5 + Takeoffs_International_SSP5)
+  Country_SSP_Database_takeoffs_all <- merge(Country_SSP_Database_takeoffs_all,Country_SSP_Database_takeoffs_dom_int_SSP5[,c(1,3,8,9,10)],  by = c("year","iso_region"), all.x=TRUE)
+  cols1 = c("SSP2" ="blue1","SSP1" ="green4","SSP5" ="red")
+ Country_SSP_Database_takeoffs_all <- Country_SSP_Database_takeoffs_all[,c(1,2,10,13,16)]
+  Country_SSP_Database_takeoffs_all <- melt(Country_SSP_Database_takeoffs_all,  id.vars = c("year", "iso_region"), variable.name = "scenarios")
+  Country_SSP_Database_takeoffs_all<-Country_SSP_Database_takeoffs_all%>% filter(iso_region == "SSA")
+ SSA_takeoffs <- ggplot(Country_SSP_Database_takeoffs_all, aes(x=year, y=value, col = scenarios))+
+    geom_line(aes(colour=scenarios))+
+    ggtitle("Total Take-Offs/Landings - Sub-Saharan Africa")+
+    xlab("")+
+    ylab("Total Take-Offs/Landings")+
+   scale_colour_manual(legend_title_1,values =cols1 )+
+   facet_wrap(~iso_region)+
+    theme_bw()+
+   theme(panel.spacing.x = unit(12, "mm"))
+  print(SSA_takeoffs)
+ 
+```
+
+\newpage
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+  #million barrels per day unit
+Country_SSP_Database_global <- Country_SSP_Database
+Country_SSP_Database_global <- Country_SSP_Database_global %>% group_by(year,sector,scenarios)
+Country_SSP_Database_global = summarise(Country_SSP_Database_global, global_demand = sum(value))
+#fuel demand in Mtoe international aviation
+Country_SSP_Database_global <- subset(Country_SSP_Database_global, Country_SSP_Database_global$year <=2100 & Country_SSP_Database_global$year >=2018)
+#filter
+Country_SSP_Database_global<- Country_SSP_Database_global %>% filter(sector == "trn_aviation_intl_L" | sector == "trn_aviation_intl_B")
+  Country_SSP_Database_global <- Country_SSP_Database_global %>% group_by(scenarios, year)
+  Country_SSP_Database_global = summarise(Country_SSP_Database_global, International_demand = sum(global_demand))
+  Fuel_demand_int = fread(file.path(data_folder,"Fuel_efficiency_new.csv"), sep=";", header = T)
+  #test
+  #calculate streckungsfaktor
+  Fuel_demand_int <- transform(Fuel_demand_int, factor = 1)
+  Fuel_demand_int$factor <- ifelse(Fuel_demand_int$scenarios == "SSP1_noCOVID",0.5^0.01219512195, Fuel_demand_int$factor)
+  Fuel_demand_int$factor <- ifelse(Fuel_demand_int$scenarios == "SSP2_noCOVID",0.6^0.01219512195, Fuel_demand_int$factor)
+  Fuel_demand_int$factor <- ifelse(Fuel_demand_int$scenarios == "SSP5_noCOVID",0.55^0.01219512195, Fuel_demand_int$factor)
+  Fuel_demand_int$factor <- ifelse(Fuel_demand_int$scenarios == "SSP1",0.5^0.01219512195, Fuel_demand_int$factor)
+  Fuel_demand_int$factor <- ifelse(Fuel_demand_int$scenarios == "SSP2",0.6^0.01219512195, Fuel_demand_int$factor)
+  Fuel_demand_int$factor <- ifelse(Fuel_demand_int$scenarios == "SSP5",0.55^0.01219512195, Fuel_demand_int$factor)
+  
+  for (j in unique(Fuel_demand_int$scenarios)) {
+    for (i in unique(Fuel_demand_int$year[Fuel_demand_int$scenarios == j])) { 
+      if (Fuel_demand_int$year[Fuel_demand_int$scenarios == j & Fuel_demand_int$year == i] >= 2019) { 
+        Fuel_demand_int$fuel_share[Fuel_demand_int$scenarios == j & Fuel_demand_int$year == i] <- Fuel_demand_int$fuel_share[Fuel_demand_int$scenarios == j & Fuel_demand_int$year == i] * Fuel_demand_int$factor[Fuel_demand_int$scenarios == j & Fuel_demand_int$year == i]^(Fuel_demand_int$count[Fuel_demand_int$scenarios == j & Fuel_demand_int$year == i]-1)
+      }
+    }
+  }
+ Fuel_demand_int<-setDF(Fuel_demand_int)
+  Fuel_demand_int <-Fuel_demand_int[ -c(1) ]
+  Fuel_demand_int<-merge(Fuel_demand_int,Country_SSP_Database_global, by = c("year", "scenarios"), all.x=TRUE)
+  #Calculate fuel demand per 1 RPK in 2019 from eurostat: 52,9 Mtoe/RPK in 2018 = 52.9/1.1584 trill= 4.56822*10^-11
+  Fuel_demand_int <- transform(Fuel_demand_int, fuel_efficiency = 0.00000000004568221071)
+  Fuel_demand_int <- transform(Fuel_demand_int,fuel_efficiency_adj= fuel_share* fuel_efficiency)
+  Fuel_demand_int <- transform(Fuel_demand_int, Fuel_demand_int_adj = fuel_efficiency_adj * International_demand * 1000000000000)
+  Fuel_demand_int <- transform(Fuel_demand_int, Fuel_demand_int_adj_day = Fuel_demand_int_adj/365)
+  Fuel_demand_int <- transform(Fuel_demand_int, Fuel_demand_int_adj_day = Fuel_demand_int_adj_day*7.1428571428571)
+  cols2 = c("SSP2" ="blue1","SSP1" ="green4","SSP5" ="red","SSP2_noCOVID" ="steelblue4","SSP1_noCOVID" ="darkolivegreen","SSP5_noCOVID" ="darksalmon")
+  Fueldemand_int <- ggplot(Fuel_demand_int, aes(x=year, y=Fuel_demand_int_adj_day, col = scenarios))+
+    geom_line(aes(colour=scenarios))+
+    labs(y = "Fuel Demand in Mboe per day - based on RPK", x="", title = "International Fuel Demand in Million barrels per day")+
+    theme_bw()+
+  scale_colour_manual(legend_title_1,values =cols2)
+  print(Fueldemand_int)
+  
+```
+\newpage
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+#DOmESTIC
+Country_SSP_Database_global <- Country_SSP_Database
+Country_SSP_Database_global <- Country_SSP_Database_global %>% group_by(year,sector,scenarios)
+Country_SSP_Database_global = summarise(Country_SSP_Database_global, global_demand = sum(value))
+#fuel demand in Mtoe international aviation
+Country_SSP_Database_global <- subset(Country_SSP_Database_global, Country_SSP_Database_global$year <=2100 & Country_SSP_Database_global$year >=2018)
+#filter
+Country_SSP_Database_global<- Country_SSP_Database_global %>% filter(sector == "trn_aviation_intl_d_L" | sector == "trn_aviation_intl_d_B")
+  Country_SSP_Database_global <- Country_SSP_Database_global %>% group_by(scenarios, year)
+  Country_SSP_Database_global = summarise(Country_SSP_Database_global, Domestic_demand = sum(global_demand))
+  Fuel_demand_domestic = fread(file.path(data_folder,"Fuel_efficiency_new.csv"), sep=";", header = T)
+  #test
+   #calculate streckungsfaktor
+  Fuel_demand_domestic <- transform(Fuel_demand_domestic, factor = 1)
+  Fuel_demand_domestic$factor <- ifelse(Fuel_demand_domestic$scenarios == "SSP1_noCOVID",0.35^0.01219512195, Fuel_demand_domestic$factor)
+  Fuel_demand_domestic$factor <- ifelse(Fuel_demand_domestic$scenarios == "SSP2_noCOVID",0.4^0.01219512195, Fuel_demand_domestic$factor)
+  Fuel_demand_domestic$factor <- ifelse(Fuel_demand_domestic$scenarios == "SSP5_noCOVID",0.375^0.01219512195, Fuel_demand_domestic$factor)
+  Fuel_demand_domestic$factor <- ifelse(Fuel_demand_domestic$scenarios == "SSP1",0.35^0.01219512195, Fuel_demand_domestic$factor)
+  Fuel_demand_domestic$factor <- ifelse(Fuel_demand_domestic$scenarios == "SSP2",0.4^0.01219512195, Fuel_demand_domestic$factor)
+  Fuel_demand_domestic$factor <- ifelse(Fuel_demand_domestic$scenarios == "SSP5",0.375^0.01219512195, Fuel_demand_domestic$factor)
+  
+  for (j in unique(Fuel_demand_domestic$scenarios)) {
+    for (i in unique(Fuel_demand_domestic$year[Fuel_demand_domestic$scenarios == j])) { 
+      if (Fuel_demand_domestic$year[Fuel_demand_domestic$scenarios == j & Fuel_demand_domestic$year == i] >= 2019) { 
+        Fuel_demand_domestic$fuel_share[Fuel_demand_domestic$scenarios == j & Fuel_demand_domestic$year == i] <- Fuel_demand_domestic$fuel_share[Fuel_demand_domestic$scenarios == j & Fuel_demand_domestic$year == i] * Fuel_demand_domestic$factor[Fuel_demand_domestic$scenarios == j & Fuel_demand_domestic$year == i]^(Fuel_demand_domestic$count[Fuel_demand_domestic$scenarios == j & Fuel_demand_domestic$year == i]-1)
+      }
+    }
+  }
+  
+  Fuel_demand_domestic<-setDF(Fuel_demand_domestic)
+  Fuel_demand_domestic <-Fuel_demand_domestic[ -c(1) ]
+  Fuel_demand_domestic<-merge(Fuel_demand_domestic,Country_SSP_Database_global, by = c("year", "scenarios"), all.x=TRUE)
+  #Calculate fuel demand per 1 RPK in 2018 from eurostat: 52.8 Mtoe/RPK in 2019 = 7.27/0.23 trill RPK = 3.160869565*10^-11
+  Fuel_demand_domestic <- transform(Fuel_demand_domestic, fuel_efficiency = 0.00000000003160869565)
+  Fuel_demand_domestic <- transform(Fuel_demand_domestic,fuel_efficiency_adj= fuel_share* fuel_efficiency)
+  Fuel_demand_domestic <- transform(Fuel_demand_domestic, Fuel_demand_adj = fuel_efficiency_adj * Domestic_demand * 1000000000000)
+  Fuel_demand_domestic <- transform(Fuel_demand_domestic, Fuel_demand_adj_day = Fuel_demand_adj/365)
+  Fuel_demand_domestic <- transform(Fuel_demand_domestic, Fuel_demand_adj_day = Fuel_demand_adj_day*7.1428571428571)
+  #group by covid
+  Fuel_demand_domestic %>%
+    mutate(COVID = scenarios == "SSP1 - COVID"| scenarios == "SSP2 - COVID"| scenarios ==  "SSP5 - COVID") %>%
+    group_by(COVID) -> Fuel_demand_domestic
+  Fueldemand_dom <- ggplot(Fuel_demand_domestic, aes(x=year, y=Fuel_demand_adj_day, col = scenarios))+
+  geom_line(aes(colour=scenarios))+
+   labs(y = "Fuel Demand in Mboe per day - based on RPK", x="", title = "Domestic Fuel Demand in Million barrels per day")+
+      scale_colour_manual(legend_title_1,values =cols2 )+
+    theme_bw()
+  print(Fueldemand_dom)
+```
+\newpage
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+  Fuel_demand_domestic_efficiency <-Fuel_demand_domestic
+  Fuel_demand_domestic_efficiency = fread(file.path(data_folder,"Fuel_efficiency_new_adj.csv"), sep=";", header = T)
+  #test
+   #calculate streckungsfaktor
+  Fuel_demand_domestic_efficiency <- transform(Fuel_demand_domestic_efficiency, factor = 1)
+  Fuel_demand_domestic_efficiency$factor <- ifelse(Fuel_demand_domestic_efficiency$scenarios == "IATA - reference",0.289^0.01219512195, Fuel_demand_domestic_efficiency$factor)
+  Fuel_demand_domestic_efficiency$factor <- ifelse(Fuel_demand_domestic_efficiency$scenarios == "SSP1_noCOVID",0.35^0.01219512195, Fuel_demand_domestic_efficiency$factor)
+  Fuel_demand_domestic_efficiency$factor <- ifelse(Fuel_demand_domestic_efficiency$scenarios == "SSP2_noCOVID",0.4^0.01219512195, Fuel_demand_domestic_efficiency$factor)
+  Fuel_demand_domestic_efficiency$factor <- ifelse(Fuel_demand_domestic_efficiency$scenarios == "SSP5_noCOVID",0.375^0.01219512195, Fuel_demand_domestic_efficiency$factor)
+  Fuel_demand_domestic_efficiency$factor <- ifelse(Fuel_demand_domestic_efficiency$scenarios == "SSP1",0.35^0.01219512195, Fuel_demand_domestic_efficiency$factor)
+  Fuel_demand_domestic_efficiency$factor <- ifelse(Fuel_demand_domestic_efficiency$scenarios == "SSP2",0.4^0.01219512195, Fuel_demand_domestic_efficiency$factor)
+  Fuel_demand_domestic_efficiency$factor <- ifelse(Fuel_demand_domestic_efficiency$scenarios == "SSP5",0.375^0.01219512195, Fuel_demand_domestic_efficiency$factor)
+    for (j in unique(Fuel_demand_domestic_efficiency$scenarios)) {
+    for (i in unique(Fuel_demand_domestic_efficiency$year[Fuel_demand_domestic_efficiency$scenarios == j])) { 
+      if (Fuel_demand_domestic_efficiency$year[Fuel_demand_domestic_efficiency$scenarios == j & Fuel_demand_domestic_efficiency$year == i] >= 2019) { 
+        Fuel_demand_domestic_efficiency$fuel_share[Fuel_demand_domestic_efficiency$scenarios == j & Fuel_demand_domestic_efficiency$year == i] <- Fuel_demand_domestic_efficiency$fuel_share[Fuel_demand_domestic_efficiency$scenarios == j & Fuel_demand_domestic_efficiency$year == i] * Fuel_demand_domestic_efficiency$factor[Fuel_demand_domestic_efficiency$scenarios == j & Fuel_demand_domestic_efficiency$year == i]^(Fuel_demand_domestic_efficiency$count[Fuel_demand_domestic_efficiency$scenarios == j & Fuel_demand_domestic_efficiency$year == i]-1)
+      }
+    }
+    }
+  Fuel_demand_domestic_efficiency <-Fuel_demand_domestic_efficiency %>% filter(scenarios == "SSP1"| scenarios == "SSP2"| scenarios ==  "SSP5"| scenarios ==  "IATA - reference")
+  fuel_efficiency <- ggplot(Fuel_demand_domestic_efficiency, aes(x=year, y=fuel_share, col = scenarios))+
+  geom_line(aes(colour=scenarios))+
+   labs(y = "Fuel Efficiency curve", x="", title = "Fuel Efficiency curves - indexed in 2018")+
+      scale_colour_manual(legend_title_3,values =cols3 )+
+    theme_bw()
+  print(fuel_efficiency)
+```
+\newpage
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+  # Total Fuel demand
+  Fuel_demand_total<-merge(Fuel_demand_domestic,Fuel_demand_int, by=c("year","scenarios"))
+  Fuel_demand_total<-Fuel_demand_total[,c(1,2,10,19)]
+  Fuel_demand_total <- transform(Fuel_demand_total, Fuel_demand_total = Fuel_demand_adj_day +Fuel_demand_int_adj_day)
+  Fuel_demand_total<- Fuel_demand_total %>% filter(scenarios == "SSP1"| scenarios == "SSP2"| scenarios ==  "SSP5")
+  #group by covid
+  Fueldemand_total <- ggplot(Fuel_demand_total, aes(x=year, y=Fuel_demand_total, col = scenarios))+
+  geom_line(aes(colour=scenarios))+
+    ggtitle("Total Fuel Demand in million barrels per day")+
+    xlab("")+
+      scale_colour_manual(legend_title_1,values =cols3 )+
+    ylab("Fuel Demand in Mboe per day - based on RPK")+
+    theme_bw()
+  print(Fueldemand_total)
+
+```
+\newpage
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+Country_SSP_Database_IE_global<-Country_SSP_Database_IE
+#Global Average
+Country_SSP_Database_IE_global <- Country_SSP_Database_IE_global %>% group_by(year,scenarios)
+Country_SSP_Database_IE_global = summarise(Country_SSP_Database_IE_global, tot_price = sum(value))
+Country_SSP_Database_IE_global <- transform(Country_SSP_Database_IE_global, tot_price = tot_price/249)
+  Country_SSP_Database_IE_global <- subset(Country_SSP_Database_IE_global, Country_SSP_Database_IE_global$year <=2100 & Country_SSP_Database_IE_global$year >=2020)
+    cols3 = c("IE_SSP2" ="blue1","IE_SSP1" ="green4","IE_SSP5" ="red")
+IE_global_PLOT <- ggplot(Country_SSP_Database_IE_global, aes(x=year, y=tot_price, col = scenarios))+
+    geom_line(aes(colour=scenarios))+
+    ggtitle("Global Average Income Elasticity")+
+    xlab("")+
+    ylab("Income Elasticitiy")+
+     scale_colour_manual(legend_title_1,values =cols3 )+
+    theme_bw()
+  print(IE_global_PLOT)
+```
+\newpage
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+#Regional
+Country_SSP_Database_IE_regional<-Country_SSP_Database_IE
+Country_SSP_Database_IE_regional<-merge(Country_SSP_Database_IE_regional,iso_mapping, by = c("iso"))
+Country_SSP_Database_IE_regional<-Country_SSP_Database_IE_regional[,c(2,3,4,6)]
+Country_SSP_Database_IE_regional <- Country_SSP_Database_IE_regional %>% group_by(year,scenarios,iso_region)
+Country_SSP_Database_IE_regional = summarise(Country_SSP_Database_IE_regional, tot_price = sum(value))
+#account for average
+  Country_SSP_Database_IE_regional$tot_price<- ifelse(Country_SSP_Database_IE_regional$iso_region == "CAZ", Country_SSP_Database_IE_regional$tot_price/5,Country_SSP_Database_IE_regional$tot_price)
+  Country_SSP_Database_IE_regional$tot_price<- ifelse(Country_SSP_Database_IE_regional$iso_region == "CHA", Country_SSP_Database_IE_regional$tot_price/4,Country_SSP_Database_IE_regional$tot_price)
+  Country_SSP_Database_IE_regional$tot_price<- ifelse(Country_SSP_Database_IE_regional$iso_region == "EUR", Country_SSP_Database_IE_regional$tot_price/34,Country_SSP_Database_IE_regional$tot_price)
+  Country_SSP_Database_IE_regional$tot_price<- ifelse(Country_SSP_Database_IE_regional$iso_region == "IND", Country_SSP_Database_IE_regional$tot_price/1,Country_SSP_Database_IE_regional$tot_price)
+  Country_SSP_Database_IE_regional$tot_price<- ifelse(Country_SSP_Database_IE_regional$iso_region == "JPN", Country_SSP_Database_IE_regional$tot_price/1,Country_SSP_Database_IE_regional$tot_price)
+  Country_SSP_Database_IE_regional$tot_price<- ifelse(Country_SSP_Database_IE_regional$iso_region == "LAM", Country_SSP_Database_IE_regional$tot_price/54,Country_SSP_Database_IE_regional$tot_price)
+  Country_SSP_Database_IE_regional$tot_price<- ifelse(Country_SSP_Database_IE_regional$iso_region == "NEU", Country_SSP_Database_IE_regional$tot_price/16,Country_SSP_Database_IE_regional$tot_price)
+  Country_SSP_Database_IE_regional$tot_price<- ifelse(Country_SSP_Database_IE_regional$iso_region == "OAS", Country_SSP_Database_IE_regional$tot_price/49,Country_SSP_Database_IE_regional$tot_price)
+  Country_SSP_Database_IE_regional$tot_price<- ifelse(Country_SSP_Database_IE_regional$iso_region == "REF", Country_SSP_Database_IE_regional$tot_price/12,Country_SSP_Database_IE_regional$tot_price)
+  Country_SSP_Database_IE_regional$tot_price<- ifelse(Country_SSP_Database_IE_regional$iso_region == "SSA", Country_SSP_Database_IE_regional$tot_price/51,Country_SSP_Database_IE_regional$tot_price)
+  Country_SSP_Database_IE_regional$tot_price<- ifelse(Country_SSP_Database_IE_regional$iso_region == "USA", Country_SSP_Database_IE_regional$tot_price/1,Country_SSP_Database_IE_regional$tot_price)
+Country_SSP_Database_IE_regional$tot_price<- ifelse(Country_SSP_Database_IE_regional$iso_region == "MEA", Country_SSP_Database_IE_regional$tot_price/21,Country_SSP_Database_IE_regional$tot_price)
+
+Country_SSP_Database_IE_regional <- subset(Country_SSP_Database_IE_regional, Country_SSP_Database_IE_regional$year <=2100 & Country_SSP_Database_IE_regional$year >=2020)
+#plot
+IE_regional_PLOT <- ggplot(Country_SSP_Database_IE_regional, aes(x=year, y=tot_price, col = iso_region))+
+    geom_line()+
+    ggtitle("Regional Average Income Elasticity")+
+    xlab("years")+
+    ylab("Income Elasticitiy")+
+    theme(panel.background = element_rect(fill = NA),
+    panel.grid.major = element_line(colour = "grey50"),
+    panel.ontop = TRUE)+
+    theme_bw()+
+    facet_wrap(~scenarios)
+  print(IE_regional_PLOT)
+```
+\newpage
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+  Threshold_data = fread(file.path(data_folder,"Threshold_data.csv"), sep=";", header = T)
+print(Threshold_data)
+
+```
+\newpage
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+COVID = fread(file.path(data_folder,"COVID_shock.csv"), sep=";", header = T)
+COVID<- COVID %>% filter(iso == "DEU")
+COVID<- COVID %>% filter(year == "2020" |year == "2021" |year == "2022" |year == "2023" |year == "2024" |year == "2025")
+COVID<- COVID[,c(2:22)]
+print(COVID)
+
+```
