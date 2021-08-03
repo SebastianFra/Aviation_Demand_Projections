@@ -155,6 +155,7 @@ POP_data <- subset(POP_data, POP_data$year <=2100 & POP_data$year >=2000)
 POP_data[, c(3) := NULL]
 measure.values<-c("SSP1_noCOVID","SSP2_noCOVID","SSP5_noCOVID")
 #interpolate
+setDT(POP_data)
 POP_data=melt( POP_data,id.vars = c("iso","year"))
 ## interpolate
 POP_data=approx_dt(dt =  POP_data, ## database to interpolate
@@ -178,6 +179,7 @@ GDP_data= summarise_all(.tbl = GDP_data,.funs = sum)
 
 measure.values<-c("SSP1_noCOVID","SSP2_noCOVID","SSP5_noCOVID","SSP1","SSP2","SSP5")
 POP_data <- melt(POP_data ,  measure.vars = measure.values, variable.name = "scenarios")
+setDT(GDP_data)
 GDP_data <- melt(GDP_data ,  measure.vars = measure.values, variable.name = "scenarios")
 setnames(POP_data, old = "value", new = "Population")
 setnames(GDP_data, old = "value", new = "GDP")
@@ -259,6 +261,7 @@ GDP_data <- subset(GDP_data, GDP_data$year <=2100 & GDP_data$year >=2000)
 GDP_data[, c(3) := NULL]
 measure.values<-c("SSP1_noCOVID","SSP2_noCOVID","SSP5_noCOVID")
 #interpolate
+setDT(GDP_data)
 GDP_data=melt( GDP_data,id.vars = c("iso","year"))
 ## interpolate
 GDP_data=approx_dt(dt =  GDP_data, ## database to interpolate
@@ -273,6 +276,7 @@ POP_data <- subset(POP_data, POP_data$year <=2100 & POP_data$year >=2000)
 POP_data[, c(3) := NULL]
 measure.values<-c("SSP1_noCOVID","SSP2_noCOVID","SSP5_noCOVID")
 #interpolate
+setDT(POP_data)
 POP_data=melt( POP_data,id.vars = c("iso","year"))
 ## interpolate
 POP_data=approx_dt(dt =  POP_data, ## database to interpolate
@@ -295,6 +299,8 @@ GDP_data <-GDP_data %>% group_by(iso_region,year)
 GDP_data= summarise_all(.tbl = GDP_data,.funs = sum)
 
 measure.values<-c("SSP1_noCOVID","SSP2_noCOVID","SSP5_noCOVID","SSP1","SSP2","SSP5")
+setDT(POP_data)
+setDT(GDP_data)
 POP_data <- melt(POP_data ,  measure.vars = measure.values, variable.name = "scenarios")
 GDP_data <- melt(GDP_data ,  measure.vars = measure.values, variable.name = "scenarios")
 setnames(POP_data, old = "value", new = "Population")
