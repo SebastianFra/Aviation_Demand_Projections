@@ -205,12 +205,6 @@ demand_regression <- function(tech_output, price_baseline, GDP_POP, REMIND_scena
   Aviation_data[, trn_aviation_intl := ifelse( year == 2019 & iso=="VEN" , 13363.0493, trn_aviation_intl) ]
   Aviation_data <- transform(Aviation_data, RPK_Cap = trn_aviation_intl/ POP_val)
   Aviation_data <- subset(Aviation_data, Aviation_data$year <=2100 & Aviation_data$year >=1990)
-  # usa to fast
-  # per capita data
-  # price path assumption
-  # y-axis= RPK captia, x-axis= GDP capita
-  #General reduction for SSP1&SSP2
-  #additive trigger # low thresholds
   for (i in unique(Aviation_data$year)[unique(Aviation_data$year)>2019]) { 
     #RPK-Threshold
     Aviation_data[year %in% seq(2005, i-1), check := ifelse(RPK_Cap > decay_threshold, decay_RPK, 1), by = "iso"]
