@@ -13,7 +13,7 @@ Step 6: To visualize your results open the file "Aviation_Demand_Plots.RMD" in t
 Step 7: Again you need to insert your individual local path to the model folder in line 13.<br />
 Step 8: Knit the RMarkdown file and analyse your results!<br />
 
-Requirements: Packages:rmndt(https://github.com/pik-piam/rmndt), madrat(https://github.com/pik-piam/madrat), data.table<br />
+Requirements: Packages: rmndt(https://github.com/pik-piam/rmndt), madrat(https://github.com/pik-piam/madrat), data.table<br />
 Software: R, R-Studio, Latex Compiler (MiKTeX)<br />
 
 For further questions or problems please contact: Sebastian Franz (franz@pik-potsdam.de or semfr@dtu.dk)<br />
