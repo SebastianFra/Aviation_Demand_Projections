@@ -5,10 +5,23 @@ GenerateAviationDemand <- function(data_folder,REMIND_scenario="SSP2", COVID_sce
   ## load data
   print("-- load data")
   tech_output = readRDS(file =file.path(data_folder,"tech_output.rds"))
-  price_baseline=readRDS(file =file.path(data_folder,"price_baseline.rds"))
-  GDP_country= readRDS(file =file.path(data_folder,"GDP_country.rds"))
-  POP_country=readRDS(file =file.path(data_folder,"POP_country.rds"))
-  GDP_POP=readRDS(file =file.path(data_folder,"GDP_POP.rds"))
+  #SSP differentiation
+  if (REMIND_scenario == "SSP1") {
+    GDP_country= readRDS(file =file.path(data_folder,"GDP_country_SSP1.rds"))
+    POP_country=readRDS(file =file.path(data_folder,"POP_country_SPP1.rds"))
+    GDP_POP=readRDS(file =file.path(data_folder,"GDP_POP_SSP1.rds"))
+    price_baseline=readRDS(file =file.path(data_folder,"price_baseline_SPP1.rds"))
+  }else if (REMIND_scenario == "SSP2") {
+    GDP_country= readRDS(file =file.path(data_folder,"GDP_country_SSP2.rds"))
+    POP_country=readRDS(file =file.path(data_folder,"POP_country_SPP2.rds"))
+    GDP_POP=readRDS(file =file.path(data_folder,"GDP_POP_SSP2.rds"))
+    price_baseline=readRDS(file =file.path(data_folder,"price_baseline_SPP2.rds"))
+  }else if (REMIND_scenario == "SSP5") {
+    GDP_country= readRDS(file =file.path(data_folder,"GDP_country_SSP5.rds"))
+    POP_country=readRDS(file =file.path(data_folder,"POP_country_SPP5.rds"))
+    GDP_POP=readRDS(file =file.path(data_folder,"GDP_POP_SSP5.rds"))
+    price_baseline=readRDS(file =file.path(data_folder,"price_baseline_SPP5.rds"))
+  }else{}
   ICCT_data_I =readRDS(file =file.path(data_folder,"ICCT_data_I.rds"))
   ICCT_data_D = readRDS(file =file.path(data_folder,"ICCT_data_D.rds"))
   REMIND2ISO_MAPPING_adj=readRDS(file =file.path(data_folder,"REMIND2ISO_MAPPING_adj.rds"))

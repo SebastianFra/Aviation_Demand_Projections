@@ -7,6 +7,7 @@ require(rmndt)
 ########### IMPORTANT ###################
 #please insert here the path to you local folder
 local_folder= "ADD/YOUR/LOCAL/PATH/HERE"
+local_folder= "C:/Users/franz/Documents/R/Aviation_Demand_Projections/Aviation_Demand_Model"
 ########### IMPORTANT ###################
 setwd(local_folder)
 data_folder = file.path(local_folder,"data_folder")
