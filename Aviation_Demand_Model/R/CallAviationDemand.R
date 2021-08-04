@@ -1,5 +1,8 @@
 #required packages
 options(repos = c(CRAN = "@CRAN@", pik = "https://rse.pik-potsdam.de/r/packages"))
+install.packages("madrat")
+install.packages("rmndt")
+install.packages("data.table")
 require(madrat)
 require(data.table)
 require(rmndt)

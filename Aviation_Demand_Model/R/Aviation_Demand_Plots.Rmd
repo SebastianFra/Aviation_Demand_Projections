@@ -49,8 +49,7 @@ Country_SSP_Database<- merge(Country_SSP_Database,SSP1_noCOVID,by = c("iso","yea
 Country_SSP_Database<- merge(Country_SSP_Database,SSP2_noCOVID,by = c("iso","year", "sector"),all.x = TRUE)
 Country_SSP_Database<- merge(Country_SSP_Database,SSP5_noCOVID,by = c("iso","year", "sector"),all.x = TRUE)
 measure.values<-c("SSP1_noCOVID","SSP2_noCOVID","SSP5_noCOVID","SSP1","SSP2","SSP5")
-setDT(Country_SSP_Database)
-Country_SSP_Database <- melt(Country_SSP_Database ,  measure.vars = measure.values, variable.name = "scenarios")
+Country_SSP_Database <- melt(setDT(Country_SSP_Database) ,  measure.vars = measure.values, variable.name = "scenarios")
 
 #Elasticities
 SSP1_Elasticitiy_COVID <-readRDS(file.path(data_folder,"elasticities_SSP1_COVID=TRUE.rds"))
@@ -65,8 +64,7 @@ setnames(SSP5_Elasticitiy_COVID, old = "income_elasticity_pass_lo", new = "IE_SS
 Country_SSP_Database_IE<- merge(SSP1_Elasticitiy_COVID,SSP2_Elasticitiy_COVID, by = c("iso","year"),all.x = TRUE)
 Country_SSP_Database_IE<- merge(Country_SSP_Database_IE,SSP5_Elasticitiy_COVID,by = c("iso","year"),all.x = TRUE)
 measure.values<-c("IE_SSP1","IE_SSP2","IE_SSP5")
-setDT(Country_SSP_Database_IE)
-Country_SSP_Database_IE <- melt(Country_SSP_Database_IE ,  measure.vars = measure.values, variable.name = "scenarios")
+Country_SSP_Database_IE <- melt(setDT(Country_SSP_Database_IE) ,  measure.vars = measure.values, variable.name = "scenarios")
 
 #plotting palette
 legend_title_1 <- "EDGE-T scenarios"
@@ -88,7 +86,7 @@ Country_SSP_Database_global = summarise(Country_SSP_Database_global, global_dema
 References = fread(file.path(data_folder,"References.csv"), sep=";", header = T)
 References <- subset(References, References$year <=2100 & References$year >=2020)
 measure.values<-c("reference_demand_goessling et.al","reference_demand_JADC","reference AIM, SSP2","reference AIM, SSP1","reference AIM, SSP5")
-References <- melt(References ,  measure.vars = measure.values, variable.name = 'scenarios')
+References <- melt(setDT(References) ,  measure.vars = measure.values, variable.name = 'scenarios')
 setnames(References, old = "value", new = "global_demand")
 Country_SSP_Database_global <- rbind(Country_SSP_Database_global,References)
   #prepare plot
@@ -143,7 +141,7 @@ GDP_data <- subset(GDP_data, GDP_data$year <=2100 & GDP_data$year >=2000)
 GDP_data[, c(3) := NULL]
 measure.values<-c("SSP1_noCOVID","SSP2_noCOVID","SSP5_noCOVID")
 #interpolate
-GDP_data=melt( GDP_data,id.vars = c("iso","year"))
+GDP_data=melt(setDT(GDP_data),id.vars = c("iso","year"))
 ## interpolate
 GDP_data=approx_dt(dt =  GDP_data, ## database to interpolate
                          xdata = seq(2000,2100,1), ## time steps on which to interpolate
@@ -157,8 +155,7 @@ POP_data <- subset(POP_data, POP_data$year <=2100 & POP_data$year >=2000)
 POP_data[, c(3) := NULL]
 measure.values<-c("SSP1_noCOVID","SSP2_noCOVID","SSP5_noCOVID")
 #interpolate
-setDT(POP_data)
-POP_data=melt( POP_data,id.vars = c("iso","year"))
+POP_data=melt(setDT(POP_data),id.vars = c("iso","year"))
 ## interpolate
 POP_data=approx_dt(dt =  POP_data, ## database to interpolate
                          xdata = seq(2000,2100,1), ## time steps on which to interpolate
@@ -180,9 +177,9 @@ GDP_data <-GDP_data %>% group_by(iso_region,year)
 GDP_data= summarise_all(.tbl = GDP_data,.funs = sum)
 
 measure.values<-c("SSP1_noCOVID","SSP2_noCOVID","SSP5_noCOVID","SSP1","SSP2","SSP5")
-POP_data <- melt(POP_data ,  measure.vars = measure.values, variable.name = "scenarios")
+POP_data <- melt(setDT(POP_data) ,  measure.vars = measure.values, variable.name = "scenarios")
 setDT(GDP_data)
-GDP_data <- melt(GDP_data ,  measure.vars = measure.values, variable.name = "scenarios")
+GDP_data <- melt(setDT(GDP_data) ,  measure.vars = measure.values, variable.name = "scenarios")
 setnames(POP_data, old = "value", new = "Population")
 setnames(GDP_data, old = "value", new = "GDP")
 setDT(POP_data)
@@ -264,8 +261,7 @@ GDP_data <- subset(GDP_data, GDP_data$year <=2100 & GDP_data$year >=2000)
 GDP_data[, c(3) := NULL]
 measure.values<-c("SSP1_noCOVID","SSP2_noCOVID","SSP5_noCOVID")
 #interpolate
-setDT(GDP_data)
-GDP_data=melt( GDP_data,id.vars = c("iso","year"))
+GDP_data=melt(setDT(GDP_data),id.vars = c("iso","year"))
 ## interpolate
 GDP_data=approx_dt(dt =  GDP_data, ## database to interpolate
                          xdata = seq(2000,2100,1), ## time steps on which to interpolate
@@ -279,8 +275,7 @@ POP_data <- subset(POP_data, POP_data$year <=2100 & POP_data$year >=2000)
 POP_data[, c(3) := NULL]
 measure.values<-c("SSP1_noCOVID","SSP2_noCOVID","SSP5_noCOVID")
 #interpolate
-setDT(POP_data)
-POP_data=melt( POP_data,id.vars = c("iso","year"))
+POP_data=melt(setDT(POP_data),id.vars = c("iso","year"))
 ## interpolate
 POP_data=approx_dt(dt =  POP_data, ## database to interpolate
                          xdata = seq(2000,2100,1), ## time steps on which to interpolate
@@ -302,10 +297,8 @@ GDP_data <-GDP_data %>% group_by(iso_region,year)
 GDP_data= summarise_all(.tbl = GDP_data,.funs = sum)
 
 measure.values<-c("SSP1_noCOVID","SSP2_noCOVID","SSP5_noCOVID","SSP1","SSP2","SSP5")
-setDT(POP_data)
-setDT(GDP_data)
-POP_data <- melt(POP_data ,  measure.vars = measure.values, variable.name = "scenarios")
-GDP_data <- melt(GDP_data ,  measure.vars = measure.values, variable.name = "scenarios")
+POP_data <- melt(setDT(POP_data) ,  measure.vars = measure.values, variable.name = "scenarios")
+GDP_data <- melt(setDT(GDP_data) ,  measure.vars = measure.values, variable.name = "scenarios")
 setnames(POP_data, old = "value", new = "Population")
 setnames(GDP_data, old = "value", new = "GDP")
 Country_SSP_Database_regional<-merge(Country_SSP_Database_regional,iso_mapping, by = c("iso"))
@@ -428,7 +421,7 @@ regional_capita_demand_Adj <-  ggplot(Country_SSP_Database_regional_2, aes(x=GDP
   cols1 = c("SSP2" ="blue1","SSP1" ="green4","SSP5" ="red")
  Country_SSP_Database_takeoffs_all <- Country_SSP_Database_takeoffs_all[,c(1,2,10,13,16)]
  setDT(Country_SSP_Database_takeoffs_all)
-  Country_SSP_Database_takeoffs_all <- melt(Country_SSP_Database_takeoffs_all,  id.vars = c("year", "iso_region"), variable.name = "scenarios")
+  Country_SSP_Database_takeoffs_all <- melt(setDT(Country_SSP_Database_takeoffs_all),  id.vars = c("year", "iso_region"), variable.name = "scenarios")
   Country_SSP_Database_takeoffs_all_EUR<-Country_SSP_Database_takeoffs_all%>% filter(iso_region == "EUR")
  EUR_takeoffs <- ggplot(Country_SSP_Database_takeoffs_all_EUR, aes(x=year, y=value, col = scenarios))+
     geom_line(aes(colour=scenarios))+
@@ -492,8 +485,7 @@ regional_capita_demand_Adj <-  ggplot(Country_SSP_Database_regional_2, aes(x=GDP
   Country_SSP_Database_takeoffs_all <- merge(Country_SSP_Database_takeoffs_all,Country_SSP_Database_takeoffs_dom_int_SSP5[,c(1,3,8,9,10)],  by = c("year","iso_region"), all.x=TRUE)
   cols1 = c("SSP2" ="blue1","SSP1" ="green4","SSP5" ="red")
  Country_SSP_Database_takeoffs_all <- Country_SSP_Database_takeoffs_all[,c(1,2,10,13,16)]
- setDT(Country_SSP_Database_takeoffs_all)
-  Country_SSP_Database_takeoffs_all <- melt(Country_SSP_Database_takeoffs_all,  id.vars = c("year", "iso_region"), variable.name = "scenarios")
+  Country_SSP_Database_takeoffs_all <- melt(setDT(Country_SSP_Database_takeoffs_all),  id.vars = c("year", "iso_region"), variable.name = "scenarios")
   Country_SSP_Database_takeoffs_all<-Country_SSP_Database_takeoffs_all%>% filter(iso_region == "SSA")
  SSA_takeoffs <- ggplot(Country_SSP_Database_takeoffs_all, aes(x=year, y=value, col = scenarios))+
     geom_line(aes(colour=scenarios))+
