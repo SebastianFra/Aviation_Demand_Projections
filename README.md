@@ -1,7 +1,7 @@
 # Aviation_Demand
 Open-Source Model to analyse aviation demand in a post-pandemic world.<br />
 With this model one can easly derive aviation demand projections for different shared socioeconomic pathways (SSPs).<br />
-Citation: N/A yet<br />
+Citation: https://iopscience.iop.org/article/10.1088/1748-9326/ac65a4
 
 Usage:<br />
 Step 1: Download the entire folder (Aviation_Demand_Model) and save it to your local machine.<br />
